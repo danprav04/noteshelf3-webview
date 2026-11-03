@@ -382,61 +382,68 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
           </aside>
         )}
 
-        {/* Canvas Stage */}
-        <main className="flex-1 overflow-auto flex items-center justify-center p-4 relative bg-[#08090A]">
-          {loading && (
-            <div className="flex flex-col items-center gap-3 text-zinc-400">
-              <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-medium tracking-wide">Downloading & rendering notebook...</p>
-            </div>
-          )}
+        {/* Stage Wrapper (fixed viewport container for centered navigation) */}
+        <div className="flex-1 relative flex flex-col min-w-0 overflow-hidden">
+          {/* Scrollable Stage */}
+          <main className="flex-1 overflow-auto p-4 bg-[#08090A]">
+            {loading && (
+              <div className="min-w-full min-h-full flex flex-col items-center justify-center gap-3 text-zinc-400 py-12">
+                <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-medium tracking-wide">Downloading & rendering notebook...</p>
+              </div>
+            )}
 
-          {error && (
-            <div className="flex flex-col items-center gap-3 text-red-400 max-w-md text-center p-6 bg-red-950/20 border border-red-900/30 rounded-xl">
-              <FileText className="w-8 h-8 text-red-400" />
-              <p className="text-sm font-semibold">Could not open notebook</p>
-              <p className="text-xs text-zinc-400">{error}</p>
-              <button
-                onClick={onClose}
-                className="mt-2 px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-white"
-              >
-                Close
-              </button>
-            </div>
-          )}
+            {error && (
+              <div className="min-w-full min-h-full flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3 text-red-400 max-w-md text-center p-6 bg-red-950/20 border border-red-900/30 rounded-xl">
+                  <FileText className="w-8 h-8 text-red-400" />
+                  <p className="text-sm font-semibold">Could not open notebook</p>
+                  <p className="text-xs text-zinc-400">{error}</p>
+                  <button
+                    onClick={onClose}
+                    className="mt-2 px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-white cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
 
-          {!loading && !error && parsed && parsed.pages.length > 0 && (
-            <div className="relative flex items-center justify-center my-auto transition-transform">
-              <PageCanvas
-                page={parsed.pages[currentPage]}
-                pdfTemplates={parsed.pdfTemplates}
-                scale={scale}
-              />
-            </div>
-          )}
+            {!loading && !error && parsed && parsed.pages.length > 0 && (
+              <div className="min-w-full min-h-full flex items-center justify-center py-6">
+                <div className="m-auto transition-transform flex items-center justify-center">
+                  <PageCanvas
+                    page={parsed.pages[currentPage]}
+                    pdfTemplates={parsed.pdfTemplates}
+                    scale={scale}
+                  />
+                </div>
+              </div>
+            )}
+          </main>
 
-          {/* Floating Chevrons for Quick Page Turn */}
+          {/* Floating Chevrons for Quick Page Turn - Fixed to viewport center */}
           {totalPages > 1 && !loading && (
-            <>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-6 z-20">
               <button
                 onClick={goToPrev}
                 disabled={currentPage <= 0}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-white backdrop-blur-md flex items-center justify-center shadow-xl disabled:opacity-0 transition-all pointer-events-auto"
-                title="Previous page"
+                className="pointer-events-auto w-11 h-11 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-white backdrop-blur-md flex items-center justify-center shadow-xl disabled:opacity-0 disabled:pointer-events-none transition-all cursor-pointer"
+                title="Previous page (Left arrow)"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <button
                 onClick={goToNext}
                 disabled={currentPage >= totalPages - 1}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-white backdrop-blur-md flex items-center justify-center shadow-xl disabled:opacity-0 transition-all pointer-events-auto"
-                title="Next page"
+                className="pointer-events-auto w-11 h-11 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-white backdrop-blur-md flex items-center justify-center shadow-xl disabled:opacity-0 disabled:pointer-events-none transition-all cursor-pointer"
+                title="Next page (Right arrow)"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
-            </>
+            </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );
