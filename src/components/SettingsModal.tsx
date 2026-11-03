@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { X, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Trash2, Moon, Sun } from 'lucide-react';
 import { extractFolderId, fetchFolderContents } from '../lib/api';
+import { NotebookThemeSettings } from '../types';
+import { getStoredNotebookTheme, setStoredNotebookTheme } from '../lib/theme';
 
 interface SettingsModalProps {
   currentUrl: string;
@@ -18,6 +20,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [inputUrl, setInputUrl] = useState(currentUrl);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [themeSettings, setThemeSettings] = useState<NotebookThemeSettings>(() => getStoredNotebookTheme());
+
+  const handleUpdateTheme = (updates: Partial<NotebookThemeSettings>) => {
+    setThemeSettings((prev) => {
+      const next = { ...prev, ...updates };
+      setStoredNotebookTheme(next);
+      return next;
+    });
+  };
 
   const handleTestAndSave = async () => {
     const folderId = extractFolderId(inputUrl);
@@ -109,6 +120,99 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>{testResult.message}</span>
             </div>
           )}
+
+          {/* Notebook Reading Appearance */}
+          <div className="flex flex-col gap-3 pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Notebook Reading Mode
+                </label>
+                <p className="text-xs text-zinc-500">
+                  Default appearance when opening notebooks in the reader
+                </p>
+              </div>
+
+              {/* Mode Toggle */}
+              <div className="flex items-center bg-[#0E0F12] border border-white/10 rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateTheme({ enabled: false })}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    !themeSettings.enabled
+                      ? 'bg-zinc-700 text-white shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateTheme({ enabled: true })}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    themeSettings.enabled
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span>Dark</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dark Style Preset Selector */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-medium text-zinc-400">Preferred Dark Tone</span>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: 'charcoal', label: 'Charcoal', sub: 'Soft Dark (#141414)' },
+                    { id: 'oled', label: 'OLED', sub: 'True Black (#000000)' },
+                    { id: 'warm', label: 'Warm', sub: 'Amber Shift' }
+                  ] as const
+                ).map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleUpdateTheme({ style: preset.id, enabled: true })}
+                    className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      themeSettings.style === preset.id && themeSettings.enabled
+                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                        : 'border-white/5 hover:border-white/10 bg-[#0E0F12] text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="text-xs font-medium text-zinc-200">{preset.label}</span>
+                    <span className="text-[10px] text-zinc-500 mt-0.5">{preset.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Invert Options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={themeSettings.smartInvert}
+                  onChange={(e) => handleUpdateTheme({ smartInvert: e.target.checked })}
+                  className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500/40 w-3.5 h-3.5 cursor-pointer"
+                />
+                <span>Smart Invert (skip dark paper)</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={themeSettings.invertCover}
+                  onChange={(e) => handleUpdateTheme({ invertCover: e.target.checked })}
+                  className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500/40 w-3.5 h-3.5 cursor-pointer"
+                />
+                <span>Invert cover pages</span>
+              </label>
+            </div>
+          </div>
 
           {/* Zero-Knowledge Privacy Guarantee Box */}
           <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-white/5 flex items-start gap-3">

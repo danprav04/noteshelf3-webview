@@ -12,12 +12,16 @@ import {
   Search,
   LayoutGrid,
   X,
-  FileText
+  FileText,
+  Moon,
+  Sun,
+  ChevronDown
 } from 'lucide-react';
-import { DriveFileItem, ParsedNotebook } from '../types';
+import { DriveFileItem, ParsedNotebook, NotebookThemeSettings } from '../types';
 import { parseNsaFile } from '../lib/nsaParser';
 import { PageCanvas } from './PageCanvas';
 import { getDownloadUrl } from '../lib/api';
+import { getStoredNotebookTheme, setStoredNotebookTheme } from '../lib/theme';
 
 interface NotebookReaderProps {
   notebook: DriveFileItem;
@@ -34,8 +38,40 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [themeSettings, setThemeSettings] = useState<NotebookThemeSettings>(() => getStoredNotebookTheme());
+  const [showThemeMenu, setShowThemeMenu] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close theme menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setShowThemeMenu(false);
+      }
+    }
+    if (showThemeMenu) {
+      window.addEventListener('mousedown', handleClickOutside);
+      return () => window.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showThemeMenu]);
+
+  const toggleDarkMode = useCallback(() => {
+    setThemeSettings((prev) => {
+      const next = { ...prev, enabled: !prev.enabled };
+      setStoredNotebookTheme(next);
+      return next;
+    });
+  }, []);
+
+  const updateThemeSettings = useCallback((updates: Partial<NotebookThemeSettings>) => {
+    setThemeSettings((prev) => {
+      const next = { ...prev, ...updates };
+      setStoredNotebookTheme(next);
+      return next;
+    });
+  }, []);
 
   // Fetch & Parse .nsa
   useEffect(() => {
@@ -122,9 +158,12 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
       } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ']' || e.key === ' ') {
         goToNext();
       } else if (e.key === 'Escape') {
-        if (showSearch) setShowSearch(false);
+        if (showThemeMenu) setShowThemeMenu(false);
+        else if (showSearch) setShowSearch(false);
         else if (showThumbnails) setShowThumbnails(false);
         else onClose();
+      } else if (e.key === 'd' || e.key === 'D') {
+        toggleDarkMode();
       } else if (e.key === '+' || e.key === '=') {
         setScale((s) => Math.min(2.5, s + 0.15));
       } else if (e.key === '-') {
@@ -138,7 +177,7 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToPrev, goToNext, onClose, showSearch, showThumbnails]);
+  }, [goToPrev, goToNext, onClose, showSearch, showThumbnails, toggleDarkMode, showThemeMenu]);
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -227,25 +266,144 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
           <div className="hidden sm:flex items-center gap-1 bg-[#1A1B1F] border border-white/10 rounded-lg px-1.5 py-0.5">
             <button
               onClick={() => setScale((s) => Math.max(0.5, s - 0.15))}
-              className="p-1.5 rounded hover:bg-white/10 text-zinc-300"
+              className="p-1.5 rounded hover:bg-white/10 text-zinc-300 cursor-pointer"
               title="Zoom out (-)"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setScale(1.0)}
-              className="px-2 text-xs font-mono text-zinc-400 hover:text-white"
+              className="px-2 text-xs font-mono text-zinc-400 hover:text-white cursor-pointer"
               title="Reset zoom (0)"
             >
               {Math.round(scale * 100)}%
             </button>
             <button
               onClick={() => setScale((s) => Math.min(2.5, s + 0.15))}
-              className="p-1.5 rounded hover:bg-white/10 text-zinc-300"
+              className="p-1.5 rounded hover:bg-white/10 text-zinc-300 cursor-pointer"
               title="Zoom in (+)"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
+          </div>
+
+          {/* Dark Mode Controls */}
+          <div className="relative" ref={themeMenuRef}>
+            <div className="flex items-center bg-[#1A1B1F] border border-white/10 rounded-lg p-0.5">
+              <button
+                onClick={toggleDarkMode}
+                className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  themeSettings.enabled
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title={`Toggle notebook dark mode (D) - Currently ${themeSettings.enabled ? 'Dark' : 'Light'}`}
+              >
+                {themeSettings.enabled ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                <span className="text-xs font-medium hidden md:inline">
+                  {themeSettings.enabled ? 'Dark' : 'Light'}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowThemeMenu((prev) => !prev)}
+                className={`p-1 rounded-md transition-colors cursor-pointer ${
+                  showThemeMenu ? 'bg-white/15 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                }`}
+                title="Dark mode options"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Dark Mode Options Dropdown */}
+            {showThemeMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-[#141518] border border-white/10 rounded-xl p-3.5 shadow-2xl z-30 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-100 select-none">
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-xs font-semibold text-white">Notebook Dark Mode</span>
+                  </div>
+                  <button
+                    onClick={() => setShowThemeMenu(false)}
+                    className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Main Dark Mode Switch */}
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-zinc-200">Enable Dark Mode</span>
+                    <span className="text-[10px] text-zinc-500">Invert bright paper (Shortcut: D)</span>
+                  </div>
+                  <button
+                    onClick={toggleDarkMode}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      themeSettings.enabled ? 'bg-indigo-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        themeSettings.enabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Dark Tone Preset Selector */}
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Tone Preset
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { id: 'charcoal', label: 'Charcoal', desc: 'Soft Dark' },
+                        { id: 'oled', label: 'OLED', desc: 'True Black' },
+                        { id: 'warm', label: 'Warm', desc: 'Amber Shift' }
+                      ] as const
+                    ).map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => updateThemeSettings({ style: style.id, enabled: true })}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all cursor-pointer ${
+                          themeSettings.style === style.id && themeSettings.enabled
+                            ? 'border-indigo-500 bg-indigo-500/15 text-white'
+                            : 'border-white/5 hover:border-white/15 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        <span className="text-xs font-medium">{style.label}</span>
+                        <span className="text-[9px] text-zinc-500 mt-0.5">{style.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional Settings */}
+                <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={themeSettings.smartInvert}
+                      onChange={(e) => updateThemeSettings({ smartInvert: e.target.checked })}
+                      className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500/40 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span>Smart Invert (skip dark paper)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white">
+                    <input
+                      type="checkbox"
+                      checked={themeSettings.invertCover}
+                      onChange={(e) => updateThemeSettings({ invertCover: e.target.checked })}
+                      className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500/40 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span>Invert cover pages</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Search in OCR */}
@@ -416,6 +574,7 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
                     page={parsed.pages[currentPage]}
                     pdfTemplates={parsed.pdfTemplates}
                     scale={scale}
+                    themeSettings={themeSettings}
                   />
                 </div>
               </div>

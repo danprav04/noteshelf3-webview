@@ -43,3 +43,30 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Print Styles: suppress dark mode inversion and hide reader chrome */
+@media print {
+  header,
+  aside,
+  button,
+  .pointer-events-none {
+    display: none !important;
+  }
+
+  body,
+  #root,
+  main {
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  canvas {
+    filter: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+

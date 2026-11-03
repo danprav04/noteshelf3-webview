@@ -68,3 +68,13 @@ export interface ParsedNotebook {
   pdfTemplates: Map<string, Uint8Array>;
   resources: Map<string, Uint8Array>;
 }
+
+export type NotebookDarkModeStyle = 'charcoal' | 'oled' | 'warm';
+
+export interface NotebookThemeSettings {
+  enabled: boolean;
+  style: NotebookDarkModeStyle;
+  invertCover: boolean;
+  smartInvert: boolean;
+}
+
