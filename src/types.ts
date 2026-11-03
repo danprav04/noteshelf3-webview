@@ -39,6 +39,7 @@ export interface StrokeAnnotation {
   strokeColor: number;
   hexColor: string;
   segments: StrokeSegment[];
+  imageResourceName?: string;
   textHTMLForm?: string;
   bounds?: {
     x: number;

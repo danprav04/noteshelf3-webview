@@ -573,6 +573,7 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
                   <PageCanvas
                     page={parsed.pages[currentPage]}
                     pdfTemplates={parsed.pdfTemplates}
+                    resources={parsed.resources}
                     scale={scale}
                     themeSettings={themeSettings}
                   />

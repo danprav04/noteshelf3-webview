@@ -9,6 +9,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 interface PageCanvasProps {
   page: NotebookPage;
   pdfTemplates: Map<string, Uint8Array>;
+  resources?: Map<string, Uint8Array>;
   scale?: number;
   className?: string;
   themeSettings?: NotebookThemeSettings;
@@ -17,6 +18,7 @@ interface PageCanvasProps {
 export const PageCanvas: React.FC<PageCanvasProps> = ({
   page,
   pdfTemplates,
+  resources,
   scale = 1,
   className = '',
   themeSettings
@@ -98,6 +100,35 @@ export const PageCanvas: React.FC<PageCanvasProps> = ({
 
       if (isCancelled) return;
 
+      // 2.5. Render Embedded Images (annotationType = 2)
+      if (resources) {
+        for (const annot of page.annotations) {
+          if (annot.type === 2 && annot.imageResourceName && annot.bounds) {
+            const imgBytes = resources.get(annot.imageResourceName);
+            if (imgBytes) {
+              try {
+                const blob = new Blob([imgBytes.buffer as ArrayBuffer], { type: 'image/png' });
+                const blobUrl = URL.createObjectURL(blob);
+                const img = new Image();
+                await new Promise<void>((resolve, reject) => {
+                  img.onload = () => resolve();
+                  img.onerror = () => reject();
+                  img.src = blobUrl;
+                });
+                if (!isCancelled) {
+                  ctx.drawImage(img, annot.bounds.x, annot.bounds.y, annot.bounds.w, annot.bounds.h);
+                }
+                URL.revokeObjectURL(blobUrl);
+              } catch (err) {
+                console.warn('Failed to render embedded image annotation:', err);
+              }
+            }
+          }
+        }
+      }
+
+      if (isCancelled) return;
+
       // 3. Render Vector Inks
       for (const annot of page.annotations) {
         if (!annot.segments || annot.segments.length === 0) continue;
@@ -112,8 +143,18 @@ export const PageCanvas: React.FC<PageCanvasProps> = ({
           const seg = annot.segments[i];
           if (i === 0) {
             ctx.moveTo(seg.x, seg.y);
+          } else {
+            const prev = annot.segments[i - 1];
+            // If the start of this segment is not contiguous with the end of previous segment, move to it!
+            if (Math.abs(seg.x - prev.nx) > 1.0 || Math.abs(seg.y - prev.ny) > 1.0) {
+              ctx.moveTo(seg.x, seg.y);
+            }
           }
-          ctx.lineTo(seg.nx, seg.ny);
+          if (seg.x === seg.nx && seg.y === seg.ny) {
+            ctx.lineTo(seg.nx + 0.1, seg.ny);
+          } else {
+            ctx.lineTo(seg.nx, seg.ny);
+          }
         }
         ctx.stroke();
       }
@@ -128,7 +169,7 @@ export const PageCanvas: React.FC<PageCanvasProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [page, pdfTemplates]);
+  }, [page, pdfTemplates, resources]);
 
   return (
     <div
