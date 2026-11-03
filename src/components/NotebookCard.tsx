@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { BookOpen, Download } from 'lucide-react';
+import { BookOpen, Download, FileDown } from 'lucide-react';
 import { DriveFileItem } from '../types';
 import { getCoverUrl, getDownloadUrl } from '../lib/api';
 
 interface NotebookCardProps {
   notebook: DriveFileItem;
   onOpen: (notebook: DriveFileItem) => void;
+  onDownloadPdf?: (notebook: DriveFileItem) => void;
   viewMode?: 'grid' | 'list';
 }
 
 export const NotebookCard: React.FC<NotebookCardProps> = ({
   notebook,
   onOpen,
+  onDownloadPdf,
   viewMode = 'grid'
 }) => {
   const [imgFailed, setImgFailed] = useState(false);
@@ -58,22 +60,32 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onOpen(notebook);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Open</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownloadPdf?.(notebook);
+            }}
+            title="Download as PDF"
+            className="p-1.5 rounded-md text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <FileDown className="w-4 h-4" />
           </button>
           <a
             href={getDownloadUrl(notebook.id, notebook.name)}
             onClick={(e) => e.stopPropagation()}
             title="Download .nsa backup file"
-            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4" />
           </a>
@@ -145,14 +157,26 @@ export const NotebookCard: React.FC<NotebookCardProps> = ({
           <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-400 border border-white/5">
             .nsa
           </span>
-          <a
-            href={getDownloadUrl(notebook.id, notebook.name)}
-            onClick={(e) => e.stopPropagation()}
-            title="Download .nsa backup file"
-            className="text-zinc-500 hover:text-indigo-400 p-1 rounded hover:bg-zinc-800/80 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </a>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadPdf?.(notebook);
+              }}
+              title="Download as PDF"
+              className="text-zinc-500 hover:text-indigo-400 p-1 rounded hover:bg-zinc-800/80 transition-colors cursor-pointer"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+            </button>
+            <a
+              href={getDownloadUrl(notebook.id, notebook.name)}
+              onClick={(e) => e.stopPropagation()}
+              title="Download .nsa backup file"
+              className="text-zinc-500 hover:text-indigo-400 p-1 rounded hover:bg-zinc-800/80 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       </div>
     </div>

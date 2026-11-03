@@ -13,6 +13,7 @@ interface BookshelfProps {
   folderPath?: string;
   onSelectFolder: (folderId: string | null, folderPath?: string) => void;
   onOpenNotebook: (notebook: DriveFileItem) => void;
+  onDownloadPdf?: (notebook: DriveFileItem) => void;
   searchQuery: string;
   viewMode: 'grid' | 'list';
   loading: boolean;
@@ -24,6 +25,7 @@ export const Bookshelf: React.FC<BookshelfProps> = ({
   folderPath,
   onSelectFolder,
   onOpenNotebook,
+  onDownloadPdf,
   searchQuery,
   viewMode,
   loading
@@ -230,6 +232,7 @@ export const Bookshelf: React.FC<BookshelfProps> = ({
                   key={nb.id}
                   notebook={nb}
                   onOpen={onOpenNotebook}
+                  onDownloadPdf={onDownloadPdf}
                   viewMode="grid"
                 />
               ))}
@@ -241,6 +244,7 @@ export const Bookshelf: React.FC<BookshelfProps> = ({
                   key={nb.id}
                   notebook={nb}
                   onOpen={onOpenNotebook}
+                  onDownloadPdf={onDownloadPdf}
                   viewMode="list"
                 />
               ))}

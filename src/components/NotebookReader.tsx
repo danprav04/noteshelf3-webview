@@ -15,11 +15,13 @@ import {
   FileText,
   Moon,
   Sun,
-  ChevronDown
+  ChevronDown,
+  FileDown
 } from 'lucide-react';
 import { DriveFileItem, ParsedNotebook, NotebookThemeSettings } from '../types';
 import { parseNsaFile } from '../lib/nsaParser';
 import { PageCanvas } from './PageCanvas';
+import { PdfExportModal } from './PdfExportModal';
 import { getDownloadUrl } from '../lib/api';
 import { getStoredNotebookTheme, setStoredNotebookTheme } from '../lib/theme';
 
@@ -40,6 +42,7 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [themeSettings, setThemeSettings] = useState<NotebookThemeSettings>(() => getStoredNotebookTheme());
   const [showThemeMenu, setShowThemeMenu] = useState<boolean>(false);
+  const [showPdfModal, setShowPdfModal] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const themeMenuRef = useRef<HTMLDivElement | null>(null);
@@ -424,11 +427,21 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
             <LayoutGrid className="w-4 h-4" />
           </button>
 
-          {/* Print / Save to PDF */}
+          {/* Download as PDF */}
+          <button
+            onClick={() => setShowPdfModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
+            title="Download notebook as PDF"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Download PDF</span>
+          </button>
+
+          {/* Print */}
           <button
             onClick={() => window.print()}
-            className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
-            title="Print / Save as PDF"
+            className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            title="Print"
           >
             <Printer className="w-4 h-4" />
           </button>
@@ -605,6 +618,15 @@ export const NotebookReader: React.FC<NotebookReaderProps> = ({ notebook, onClos
           )}
         </div>
       </div>
+
+      {/* PDF Export Modal */}
+      {showPdfModal && (
+        <PdfExportModal
+          notebook={notebook}
+          parsedNotebook={parsed}
+          onClose={() => setShowPdfModal(false)}
+        />
+      )}
     </div>
   );
 };

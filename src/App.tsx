@@ -7,6 +7,7 @@ import { Bookshelf } from './components/Bookshelf';
 import { NotebookReader } from './components/NotebookReader';
 import { SettingsModal } from './components/SettingsModal';
 import { WelcomeSetup } from './components/WelcomeSetup';
+import { PdfExportModal } from './components/PdfExportModal';
 import { AlertCircle } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [openedNotebook, setOpenedNotebook] = useState<DriveFileItem | null>(null);
+  const [pdfExportNotebook, setPdfExportNotebook] = useState<DriveFileItem | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   // Load tree whenever driveUrl changes
@@ -172,6 +174,7 @@ export const App: React.FC = () => {
           folderPath={selectedFolderPath}
           onSelectFolder={handleSelectFolder}
           onOpenNotebook={setOpenedNotebook}
+          onDownloadPdf={setPdfExportNotebook}
           searchQuery={searchQuery}
           viewMode={viewMode}
           loading={loading}
@@ -183,6 +186,14 @@ export const App: React.FC = () => {
         <NotebookReader
           notebook={openedNotebook}
           onClose={() => setOpenedNotebook(null)}
+        />
+      )}
+
+      {/* Standalone PDF Export Modal (from Bookshelf) */}
+      {pdfExportNotebook && (
+        <PdfExportModal
+          notebook={pdfExportNotebook}
+          onClose={() => setPdfExportNotebook(null)}
         />
       )}
 

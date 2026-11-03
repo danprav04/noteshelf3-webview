@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
 import { NotebookPage, NotebookThemeSettings } from '../types';
 import { getCanvasFilter, isDarkColor } from '../lib/theme';
-
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+import { renderNotebookPageToCanvas } from '../lib/canvasRenderer';
 
 interface PageCanvasProps {
   page: NotebookPage;
@@ -33,134 +30,30 @@ export const PageCanvas: React.FC<PageCanvasProps> = ({
 
   const isDarkEffective = filterStyle !== 'none' || isDarkColor(page.bgColor);
 
-
   useEffect(() => {
     let isCancelled = false;
+    const abortCtrl = new AbortController();
 
     async function renderPage() {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
       setLoading(true);
-
-      const targetWidth = page.width || 1600;
-      const targetHeight = page.height || 2560;
-
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-
-      // 1. Draw Background Fill
-      ctx.fillStyle = page.bgColor || '#111111';
-      ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-      // 2. Render Associated PDF Template (if present)
-      if (page.associatedPDF && pdfTemplates.has(page.associatedPDF)) {
-        try {
-          const pdfBytes = pdfTemplates.get(page.associatedPDF)!;
-          // Load document with pdfjs
-          const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice(0) });
-          const pdfDoc = await loadingTask.promise;
-
-          if (!isCancelled) {
-            const pageIndex = Math.min(page.associatedPageIndex || 1, pdfDoc.numPages);
-            const pdfPage = await pdfDoc.getPage(pageIndex);
-
-            // Compute viewport scaling to match target dimensions
-            const unscaledViewport = pdfPage.getViewport({ scale: 1 });
-            const scaleX = targetWidth / unscaledViewport.width;
-            const scaleY = targetHeight / unscaledViewport.height;
-            const pdfScale = Math.min(scaleX, scaleY);
-
-            const viewport = pdfPage.getViewport({ scale: pdfScale });
-
-            // Create offscreen canvas for PDF rendering
-            const offscreen = document.createElement('canvas');
-            offscreen.width = targetWidth;
-            offscreen.height = targetHeight;
-            const offscreenCtx = offscreen.getContext('2d');
-
-            if (offscreenCtx) {
-              await pdfPage.render({
-                canvasContext: offscreenCtx,
-                viewport
-              }).promise;
-
-              if (!isCancelled) {
-                ctx.drawImage(offscreen, 0, 0);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to render PDF template for page:', err);
+      try {
+        await renderNotebookPageToCanvas(
+          canvas,
+          page,
+          pdfTemplates,
+          resources,
+          undefined,
+          abortCtrl.signal
+        );
+      } catch (err) {
+        console.warn('Page rendering error:', err);
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
         }
-      }
-
-      if (isCancelled) return;
-
-      // 2.5. Render Embedded Images (annotationType = 2)
-      if (resources) {
-        for (const annot of page.annotations) {
-          if (annot.type === 2 && annot.imageResourceName && annot.bounds) {
-            const imgBytes = resources.get(annot.imageResourceName);
-            if (imgBytes) {
-              try {
-                const blob = new Blob([imgBytes.buffer as ArrayBuffer], { type: 'image/png' });
-                const blobUrl = URL.createObjectURL(blob);
-                const img = new Image();
-                await new Promise<void>((resolve, reject) => {
-                  img.onload = () => resolve();
-                  img.onerror = () => reject();
-                  img.src = blobUrl;
-                });
-                if (!isCancelled) {
-                  ctx.drawImage(img, annot.bounds.x, annot.bounds.y, annot.bounds.w, annot.bounds.h);
-                }
-                URL.revokeObjectURL(blobUrl);
-              } catch (err) {
-                console.warn('Failed to render embedded image annotation:', err);
-              }
-            }
-          }
-        }
-      }
-
-      if (isCancelled) return;
-
-      // 3. Render Vector Inks
-      for (const annot of page.annotations) {
-        if (!annot.segments || annot.segments.length === 0) continue;
-
-        ctx.strokeStyle = annot.hexColor;
-        ctx.lineWidth = (annot.strokeWidth || 2) * 1.4;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        ctx.beginPath();
-        for (let i = 0; i < annot.segments.length; i++) {
-          const seg = annot.segments[i];
-          if (i === 0) {
-            ctx.moveTo(seg.x, seg.y);
-          } else {
-            const prev = annot.segments[i - 1];
-            // If the start of this segment is not contiguous with the end of previous segment, move to it!
-            if (Math.abs(seg.x - prev.nx) > 1.0 || Math.abs(seg.y - prev.ny) > 1.0) {
-              ctx.moveTo(seg.x, seg.y);
-            }
-          }
-          if (seg.x === seg.nx && seg.y === seg.ny) {
-            ctx.lineTo(seg.nx + 0.1, seg.ny);
-          } else {
-            ctx.lineTo(seg.nx, seg.ny);
-          }
-        }
-        ctx.stroke();
-      }
-
-      if (!isCancelled) {
-        setLoading(false);
       }
     }
 
@@ -168,6 +61,7 @@ export const PageCanvas: React.FC<PageCanvasProps> = ({
 
     return () => {
       isCancelled = true;
+      abortCtrl.abort();
     };
   }, [page, pdfTemplates, resources]);
 
